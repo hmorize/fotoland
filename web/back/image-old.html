@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Cropper.js</title>
+  <link href="/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+  <script src="/js/axios.min.js"></script>
+  <link href="/css/cropper.min.css" rel="stylesheet">
+  <script src="/js/cropper.min.js"></script>
+  <script src="/js/bootstrap.bundle.min.js"></script>
+  <style>
+    .slidecontainer {
+      width: 100%;
+    }
+
+    /* .slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 25px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  background: #04AA6D;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  background: #04AA6D;
+  cursor: pointer;
+} */
+
+    input[type=file]::-webkit-file-upload-button {
+      visibility: hidden;
+    }
+
+    #imagem {
+      display: block;
+      max-width: 100%;
+      /* min-width: 300px; */
+      /* min-height: 300px; */
+      background-image: url('background.svg');
+      /* background-image: linear-gradient(red, yellow); */
+      /* background-color: #cffcca; */
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6 mt-5">
+        <label class="label" data-toggle="tooltip" title="Change your avatar">
+          <img id="imagem" class="" width="90%" height="80%" src="background.svg"
+            alt="Clique para upload imagem">
+          <input style="display:none;" type="file" class="sr-only" id="abrearquivo" name="arquivo"
+            accept="image/png, image/gif, image/jpeg">
+        </label>
+      </div>
+      <div class="col-md-1 mt-5" id="showSalvar" style="display:none;">
+        <div class="btn-group">
+          <button id="tamanho-label" type="button" class="btn btn-outline-primary btn-sm dropdown-toggle"
+            data-bs-toggle="dropdown" aria-expanded="false">
+            Tamanho
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" onclick="stam(1.80)">1.80m</a></li>
+            <li><a class="dropdown-item" href="#" onclick="stam(1.70)">1.70m</a></li>
+            <li><a class="dropdown-item" href="#" onclick="stam(1.60)">1.60m</a></li>
+            <li><a class="dropdown-item" href="#" onclick="stam(1.50)">1.50m</a></li>
+            <input style="display:none;" type="text" id="tamanho" name="tamanho" value="1.80">
+          </ul>
+        </div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Basic radio toggle button group">
+          <input type="radio" class="btn-check btn-sm " name="orientacao" id="retrato" autocomplete="off" checked>
+          <label class="btn btn-outline-primary" for="retrato">Retrato</label>
+
+          <input type="radio" class="btn-check btn-sm " name="orientacao" id="paisagem" autocomplete="off">
+          <label class="btn btn-outline-primary" for="paisagem">Paisagem</label>
+        </div>
+        <button type="button" id="botaoSalvar" class="btn btn-outline-primary btn-sm">
+          Salvar
+        </button>
+        <p></p>
+      </div>
+    </div>
+    <div class="row" id="showZoom" style="display:none;">
+      <div class="col-6 mt-1">
+        <div class="slidecontainer">
+          <span id="zoom-label">Zoom</span>
+          <input id="zoom" style="width:300px;" type="range" min="1" max="100" value="50">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const RETRATO = 0;
+    const PAISAGEM = 1;
+
+    const sizes = {
+      '1.80': ['1.80m', '90x180'],
+      '1.70': ['1.70m', '90x170'],
+      '1.60': ['1.60m', '90x160'],
+      '1.50': ['1.50m', '90x150'],
+      // 140: '140x90cm',
+    }
+
+    const $abrearquivo = document.getElementById('abrearquivo');
+    const $imagem = document.getElementById('imagem');
+    const $zoom = document.getElementById('zoom');
+    const $zoomLabel = document.getElementById('zoom-label');
+    const $tamanho = document.getElementById('tamanho');
+    const $tamanhoLabel = document.getElementById('tamanho-label');
+    const $showZoom = document.getElementById('showZoom');
+    const $showSalvar = document.getElementById('showSalvar');
+    const $botaoSalvar = document.getElementById('botaoSalvar');
+    const $retrato = document.getElementById('retrato');
+    const $paisagem = document.getElementById('paisagem');
+
+    let cropper;
+    let minZoom = 1.0;
+    let maxZoom = 4.0;
+    let orientacao = RETRATO;
+
+    let usp = new URLSearchParams(document.location.search);
+    const uid = usp.getAll('uid');
+
+
+    $zoom.addEventListener('change', function (e) {
+      console.log('zoom change: ', e.target.value);
+
+      const containerData = cropper.getContainerData();
+      console.log('zoom change: ', containerData.width, containerData.height / 2)
+
+      zoom = Math.max(minZoom, minZoom + e.target.value * (maxZoom - minZoom) / 100.0);
+      $zoomLabel.innerText = 'Zoom: ' + (100 * zoom).toFixed(0) + '%'
+
+      cropper.zoomTo(zoom, {
+        x: containerData.width / 2,
+        y: containerData.height / 2,
+      });
+
+    });
+
+    $imagem.addEventListener('zoom', e => {
+      console.log(e.detail)
+      console.log(e.detail.oldScale, '->', e.detail.scale)
+      $zoom.value = 100 * (e.detail.scale - minZoom) / (maxZoom - minZoom)
+      $zoomLabel.innerText = 'Zoom: ' + (100 * e.detail.scale).toFixed(0) + '%'
+    })
+
+
+    $retrato.addEventListener('change', e => {
+      console.log(e.target)
+      e.target.checked = true
+      orientacao = RETRATO
+      stam($tamanho.value)
+    })
+
+    $paisagem.addEventListener('change', e => {
+      console.log(e.target)
+      e.target.checked = true
+      orientacao = PAISAGEM
+      stam($tamanho.value)
+    })
+
+
+    $imagem.addEventListener('change', e => {
+      console.log('img onchange', e)
+    })
+
+    $abrearquivo.addEventListener('change', function (e) {
+      const files = e.target.files;
+      $abrearquivo.disabled = true;
+      function beginCrop(url) {
+        $abrearquivo.value = '';
+        $imagem.src = url;
+        cropper = new Cropper($imagem, {
+          aspectRatio: 0.55,
+          autoCropArea: 0.75,
+          dragMode: 'move',
+          viewMode: 2,
+        });
+
+
+        setTimeout(() => {
+          const containerData = cropper.getContainerData();
+          const imageData = cropper.getImageData();
+          console.log('containerData', containerData)
+          console.log('imageData', imageData)
+
+          minZoom = Math.min(containerData.width / imageData.naturalWidth, containerData.height / imageData.naturalHeight)
+          maxZoom *= minZoom
+          console.log('minZoom', minZoom)
+
+          $zoom.value = minZoom
+
+          postMsg("open", url)
+        }, 100)
+
+
+
+        // $zoom.addEventListener("change", function(evt) {
+        //   console.log('=>', $zoom.value);
+        // });
+        $botaoSalvar.addEventListener("click", salvaImagem);
+        $showZoom.style.display = "block";
+        $showSalvar.style.display = "block";
+      };
+      var reader;
+      var file;
+      var url;
+
+      if (files && files.length > 0) {
+        file = files[0];
+        if (URL) {
+          beginCrop(URL.createObjectURL(file));
+        } else if (FileReader) {
+          reader = new FileReader();
+          reader.onload = function (e) {
+            beginCrop(reader.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    });
+
+    function stam(tam) {
+      ratio = tam;
+      if (orientacao === RETRATO) ratio = 1 / tam;
+      cropper.setAspectRatio(ratio);
+      //   alert(tam.toFixed(2))
+      //   alert(sizes[tam.toFixed(2)][1])
+      $tamanho.value = tam.toFixed(2)
+      $tamanhoLabel.innerText = sizes[$tamanho.value][0]
+      $tamanhoLabel.text = sizes[$tamanho.value][0]
+      //   alert($tamanho.value)
+    }
+
+    function setSize(w,h) {
+      ratio = w/h
+      cropper.setAspectRatio(ratio);
+      $tamanho.value = (h/100).toFixed(2)
+      $tamanhoLabel.innerText = sizes[$tamanho.value][0]
+      $tamanhoLabel.text = sizes[$tamanho.value][0]
+    }
+
+    function salvaImagem() {
+      const canvas = cropper.getCroppedCanvas({}).toBlob(function (blob) {
+        const formData = new FormData();
+        formData.append('img', blob, 'dummy.jpg');
+        formData.append('size', sizes[$tamanho.value][1]);
+        formData.append('uid', uid);
+        axios.post("/upload.php", formData, {
+          headers: {
+            "Content-Type": `multipart/form-data; boundary=${formData._boundary}`,
+          }
+        })
+          .then((response) => {
+            // alert(response.data)
+            if (response.data.code === 200) {
+              //console.log(response.data.nome);
+              // const msg = JSON.stringify({status:'OK', nome: response.data.nome})
+              // window.parent.postMessage(msg, '*');
+              postMsg('save', response.data)
+            }
+            else {
+              alert("falhou")
+            }
+          })
+          .catch(function (error) {
+            console.log(error);
+          });
+      }, 'image/jpeg');
+    }
+
+    window.addEventListener('load', function (e) {
+      console.log('Child window load', e)
+      postMsg("ready", null)
+      // window.setTimeout(postMsg, 200)
+    })
+
+    function postMsg(action, data) {
+      const msg = {
+        action: action,
+        data: data
+      }
+      console.log('Child: posting message', action, data)
+
+      switch (action) {
+        case 'ready':
+        case 'open':
+        case 'size':
+        case 'save':
+          window.parent.postMessage(msg, '*');
+          break;
+        default:
+      }
+    }
+
+    window.addEventListener('message', function (e) {
+      let action = e.data.action
+      let data = e.data.data
+      console.log('Child: message received', e.data)
+
+      switch (action) {
+        case 'ready':
+          break;
+        case 'size':
+          setSize(data.w, data.h)
+          break;
+        case 'save':
+          salvaImagem()
+          break;
+        case 'reset':
+          window.location.reload()
+        default:
+      }
+    })
+
+  </script>
+</body>
+
+</html>

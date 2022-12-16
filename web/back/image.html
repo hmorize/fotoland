@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Cropper.js</title>
+  <script src="/js/axios.min.js"></script>
+  <!-- <link href="/css/cropper.v1.5.12.min.css" rel="stylesheet">
+  <script src="/js/cropper.v1.5.12.min.js"></script> -->
+  <link href="/css/cropper.v2.0.0-alpha2.min.css" rel="stylesheet">
+  <script src="/js/cropper.v2.0.0-alpha2.min.js"></script>
+  <script src="/js/util.js"></script>
+  <style>
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-flow: row;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    input[type=file]::-webkit-file-upload-button {
+      /* visibility: hidden; */
+      display: none;
+    }
+
+    #container {
+      display: block;
+      max-width: 100vw;
+      max-height: 100vh;
+      margin: 0;
+    }
+
+    #background {
+      margin: 0;
+      max-width: 100vw;
+      max-height: 100vh;
+
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+
+      display: flex;
+      align-content: center;
+      align-items: center;
+      justify-items: center;
+      justify-content: center;
+
+      /* z-index: -1; */
+    }
+
+    #background::before {
+      z-index: -2;
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient( 0deg, lightgray 0, lightgray 20px, transparent 20px, transparent 40px);
+    }
+
+    #background::after {
+      z-index: -2;
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient( 90deg, lightgray 0, lightgray 20px, transparent 20px, transparent 40px);
+      mix-blend-mode: color-dodge;
+    }
+
+    #version {
+      font-size: small;
+      color: darkgray;
+      float: right;
+      position: absolute;
+      right: 1em;
+      bottom: .5em;
+      /* z-index: -1; */
+      font-family: sans-serif;
+    }
+
+    #imagem {
+      display: block;
+      max-width: 100%;    /* This rule is very important, please don't ignore this */
+      max-height: 100vh;
+      /* background-image: url('background.svg'); */
+      /* background-image: linear-gradient(red, yellow); */
+      /* background-color: #cffcca; */
+      /* background-repeat: repeat; */
+    }
+
+    #button {
+      /* z-index: 0; */
+      position: relative;
+      color: white;
+      background-color: #7152d0;
+      border-radius: .25cm;
+      /* width: 40%; */
+      /* height: 20%; */
+      /* z-index: 0; */
+      min-width: 3cm;
+      max-width: 90%;
+      min-height: 1cm;
+      max-height: 90%;
+      padding: 0;
+    }
+
+    #button:hover {
+      /* background-color: #8a73cf; */
+      background-color: white;
+      color: #7152d0;
+    }
+
+    #button label {
+      font-size: larger;
+      font-weight: bold;
+      padding: .1cm .5cm;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div id="container">
+    <div id="background">
+      <button id="button">
+        <label for="abrearquivo">+ ADICIONE UMA FOTO</label>
+        <input
+          id="abrearquivo"
+          type="file"
+          name="arquivo"
+          style="display: none; position: fixed;"
+          accept="image/png, image/gif, image/jpeg">
+      </button>
+      <span id="version">v1.0.0-001</span>
+    </div>
+
+    <img
+      id="imagem"
+      src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+      alt="Clique para upload imagem">
+  </div>
+
+  <input
+    id="tamanho"
+    type="hidden"
+    name="tamanho"
+    value="999x999">
+
+  <input
+    id="uid"
+    type="hidden"
+    name="uid"
+    value="zzzzzzzz">
+
+
+  <script>
+    const $container = document.getElementById('container');
+    const $abrearquivo = document.getElementById('abrearquivo');
+    const $imagem = document.getElementById('imagem');
+    const $tamanho = document.getElementById('tamanho');
+    const $uid = document.getElementById('uid');
+
+    let cropper;
+    let environment;
+    let productType;
+    let mode = 0;
+    let zoomRatio = 1;
+    let cropBoxData;
+    // console.log(Cropper)
+
+    // let usp = new URLSearchParams(document.location.search);
+    // const uid = usp.getAll('uid');
+
+    $imagem.addEventListener('change', e => {
+      console.log('img onchange', e)
+    })
+
+    $abrearquivo.addEventListener('change', function (e) {
+      const files = e.target.files;
+      $abrearquivo.disabled = true;
+
+      function beginCrop(url, name, size, type) {
+        (document.getElementById('background')??{}).style.display = 'none';
+        $abrearquivo.value = '';
+        $imagem.src = url;
+        cropper = new Cropper($imagem, {
+          aspectRatio: 95.0/195.0,
+          autoCropArea: 0.75,
+          ...(mode === 0 ?
+          {
+            viewMode: 2,
+            dragMode: 'crop'
+          } :
+          {
+            viewMode: 0,
+            dragMode: 'move',
+            restore: false,
+            guides: false,
+            center: false,
+            highlight: false,
+            cropBoxMovable: false,
+            cropBoxResizable: false,
+            toggleDragModeOnDblclick: false,
+          }),
+          minCropBoxWidth: 50,
+          minCropBoxHeight: 50,
+          // center: true,
+          ready: function () {
+            // const selection = cropper.getCropperSelection();
+            // selection.zoomable = false;
+            // selection.movable = false;
+            // selection.resizeable = false;
+            //Should set crop box data first here
+            // cropper.setCropBoxData(cropBoxData).setCanvasData(canvasData);
+            const image = cropper.getImageData();
+            const rotated = [ 90, -90, 270, -270 ].includes(image.rotate);
+            const width = rotated ? image.naturalHeight : image.naturalWidth;
+            const height = rotated ? image.naturalWidth : image.naturalHeight;
+            const file = {name, size, type};
+
+            // const data = cropper.getData()
+            // const { scaleX, scaleY } = data
+            // const scale = scaleX === scaleY ? scaleX : Number.NaN;
+
+            const data = cropper.getCanvasData()
+            const scale = data.width / data.naturalWidth
+
+            // cropBoxData = Object.assign({}, cropper.getCropBoxData())
+            // console.log('cropBoxData0', cropBoxData)
+
+            postMsg("open", {url, width, height, size, file, image, scale})
+          },
+          zoom: function(event) {
+            console.log(event)
+
+            // const { originalEvent, oldRatio, ratio } = event.detail;//v1.5.12
+            // console.log('zoom:', oldRatio, ' => ', ratio)
+            // postMsg('zoom', {scale: ratio})
+
+            const { originalEvent, oldScale, scale } = event.detail;//v2
+            console.log('zoom:', oldScale, ' => ', scale)
+            postMsg('zoom', {scale})
+
+            // setTimeout(10, ()=>cropper.setCropBoxData(cropBoxData))
+            // console.log('cropBoxData0', cropBoxData)
+            // console.log('cropBoxData', cropper.getCropBoxData())
+          }
+        });
+      };
+
+      if (files && files.length > 0) {
+        let file = files[0];
+        console.log(file)
+        if (URL) {
+          console.log('URL')
+          beginCrop(URL.createObjectURL(file), file.name, file.size, file.type);
+        }
+        else if (FileReader) {
+          console.log('FileReader')
+          let reader = new FileReader();
+          reader.onload = function (e) {
+            beginCrop(reader.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    });
+
+    function setSize(w,h) {
+      ratio = w/h
+      cropper.setAspectRatio(ratio);
+      $tamanho.value = size_encode({w,h})
+    }
+
+    function setUid(uid) {
+      $uid.value = uid
+    }
+
+    function setZoom(ratio) {
+      if (cropper) cropper.zoomTo(ratio)
+    }
+
+    function setEnv(env) {
+      environment = env
+    }
+    function setMode(_mode) {
+      mode = _mode
+    }
+
+    const productTypes = ['TT', 'CA', 'FA', 'PA']
+    function setProductType(_type) {
+      if (_type.length == 2 && productTypes.includes(_type)) {
+        productType = _type;
+        return true;
+      }
+      return false;
+    }
+
+    const getErrorData = (e) => ({
+      msg: e?.response?.data?.msg ?? e?.message ?? 'Não foi possível completar envio de imagem',
+      code: e?.response?.data?.code ?? e?.response?.status ?? -1
+    });
+
+    async function saveInfo(sku, purl, noBg) {
+      const data = new URLSearchParams()
+      data.append('env', environment);
+      data.append('sku', sku);
+      data.append('purl', purl);
+      data.append('noBg', noBg);
+      const res = await axios.post('/save.php', data, {
+        headers: {
+          "Content-Type": 'application/x-www-form-urlencoded'
+        }
+      })
+      console.log('saveInfo res:', res.data)
+      postMsg('info', res.data)
+    }
+
+    function salvaImagem(maxWidth, maxHeight) {
+      cropper.disable()
+      const canvas = cropper.getCroppedCanvas({})
+      canvas.toBlob(async function (blob) {
+        try {
+          const formData = new FormData();
+          formData.append('env', environment)
+          formData.append('img', blob, 'dummy.jpg');
+          formData.append('size', $tamanho.value);
+          formData.append('resize', size_encode({ h: maxHeight, w: maxWidth }, false));
+          formData.append('uid', $uid.value);
+          formData.append('width', canvas.width);
+          formData.append('height', canvas.height);
+          formData.append('ptype', productType);
+
+          const response = await axios.post("/upload.php", formData, {
+            headers: {
+              "Content-Type": `multipart/form-data; boundary=${formData._boundary}`,
+            },
+            timeout: 5 * 60 * 1000,
+            onUploadProgress: function(pe) {
+              const { loaded, total } = pe;
+              const progress = 'progress';
+              if (pe.lengthComputable) postMsg('uploading', {progress, loaded, total});
+            }
+          });
+
+          // alert(response.data)
+          if (response.data.code === 200) {
+            //console.log(response.data.nome);
+            // const msg = JSON.stringify({status:'OK', nome: response.data.nome})
+            // window.parent.postMessage(msg, '*');
+            // setTimeout(()=>postMsg('save', response.data), 3000)
+            postMsg('saved', response.data)
+          }
+          else {
+            postMsg('error', { code: response.data.code, msg: response.data.msg })
+          }
+        }
+        catch (e) {
+          console.error(e);
+          postMsg('error', getErrorData(e))
+        }
+      }, 'image/jpeg');
+    }
+
+    window.addEventListener('load', function (e) {
+      console.log('Child window load:', e)
+      postMsg("ready", null)
+      // window.setTimeout(postMsg, 200)
+    })
+
+    function postMsg(action, data) {
+      const msg = {
+        action: action,
+        data: data
+      }
+      console.log('Child: posting message:', action, data)
+
+      switch (action) {
+        case 'ready':
+        case 'open':
+        case 'zoom':
+        case 'size':
+        case 'saved':
+        case 'shown':
+        case 'info':
+        case 'loading':
+        case 'uploading':
+        case 'error':
+          if (window.parent !== window)
+            window.parent.postMessage(msg, '*');
+          break;
+        default:
+          throw new Error('Invalid message: ' + action);
+          console.error('Child: invalid message to post: ', action)
+      }
+    }
+
+    window.addEventListener('message', function (e) {
+      let action = e.data.action
+      let data = e.data.data
+      console.log('Child: message received:', e.data, ' from:', e.origin)
+
+      try {
+        switch (action) {
+          case 'ready':
+            if (typeof data.env !== 'string' || data.env.length < 2)
+              throw new Error('Environment name not specified');
+            if (data.mode) setMode(data.mode ? 1 : 0);
+            setEnv(data.env)
+            break;
+          case 'size':
+            setSize(data.w, data.h)
+            break;
+          case 'uid':
+            setUid(data.uid)
+            break;
+          case 'zoom':
+            setZoom(data.value)
+            break;
+          case 'info':
+            saveInfo(data.sku, data.purl, data.noBg === false ? 0 : 1);
+            break;
+          case 'save':
+            console.log('canvas', cropper.getCanvasData())
+            console.log('image', cropper.getImageData())
+            console.log('container', cropper.getContainerData())
+            // debugger;
+            if (!data.productType || !setProductType(data.productType))
+              throw new Error(`Invalid product type '${data.productType}'. Must be one off ${productTypes.join(', ')}.`);
+            salvaImagem(data.maxWidth, data.maxHeight)
+            break;
+          case 'show':
+            cropper.destroy()
+            $imagem.src = data.url
+            // $imagem.onprogress = function(pe) {
+            //   const { loaded, total } = pe;
+            //   const progress = 'progress';
+            //   if (pe.lengthComputable) postMsg('loading', {progress, loaded, total});
+            //   console.log(pe)
+            // }
+            $imagem.onload = function(e) { postMsg('shown', data) }
+            delete cropper;
+            break;
+          case 'reset':
+            $container.style.visibility = 'hidden';
+            window.location.reload()
+            // setTimeout(()=>window.location.reload(), 1000)
+          default:
+            throw new Error('Invalid message: ' + action);
+        }
+      }
+      catch (e) {
+        console.error(e);
+        postMsg('error', { msg: e.message, code: e?.response?.data?.code ?? -1 })
+      }
+    })
+
+  </script>
+</body>
+
+</html>

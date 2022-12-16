@@ -1,0 +1,16 @@
+{
+    "name": "me/foo",
+    "description": "foobar",
+    "type": "project",
+    "require": {
+        "bacon/bacon-qr-code": "^2.0",
+        "guzzlehttp/guzzle": "^7.5"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "me"
+        }
+    ],
+    "minimum-stability": "RC"
+}

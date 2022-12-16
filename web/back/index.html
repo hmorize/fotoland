@@ -1,0 +1,188 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>INDEX</title>
+    <script src="/js/util.js"></script>
+    <style>
+        iframe {
+            min-width: 190px;
+            min-height: 390px;
+            display: block;
+            resize: both;
+        }
+
+        #data {
+            background-color: bisque;
+        }
+
+        pre {
+            width: 100%;
+            min-height: 40%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>INDEX</h1>
+
+    <div>
+        <iframe id="imageFrame" width="285" height="585" style="border: solid black 1px; overflow: none;" src="/image.html?uid=9990777"></iframe>
+        
+        <p>
+            <span>
+                <input  id="size" name="size" type="text" size="10" pattern="[0-9]+x[0-9]+"/>
+                <button id="setSize">Set Size</button>
+            </span>
+        
+            <span>
+                <input  id="uid" name="uid" type="text" size="16" maxlength="16" pattern="[A-Za-z0-9]+"/>
+                <button id="setUid">Set Uid</button>
+            </span>
+        </p>
+
+        <p>
+            <span>Zoom:</span>
+            <button id="zoomOut">-</button>
+            <input  id="zoom" name="zoom" type="number" min="1" max="400">%
+            <button id="zoomIn">+</button>
+
+            <span>Product Type:</span>
+            <input  id="ptype" name="ptype" type="text" size="3" maxlength="2" pattern="[A-Za-z0-9]{2}" value="CA"/>
+            
+            &nbsp;
+            <button id="saveImg">Save</button>
+            <button id="showImg">Show</button>
+            <button id="btnReset">Reset</button>
+        </p>
+
+        <p>
+            <input  id="sku" name="sku" type="text" maxlength="40" size="'42" pattern="[0-9A-Za-z-]+" placeholder="SKU"/>
+            <input  id="purl" name="purl" type="text" maxlength="100" placeholder="URL do produto"/>
+            <input  id="imageurl" name="imageurl" type="text" maxlength="100" placeholder="URL da imagem"/>
+            <label for="noBg">remover background</label><input  id="noBg" name="noBg" type="checkbox" />
+            <button id="setInfo">Save Info</button>
+        </p>
+
+        <a id="url" target="_blank" hred="#">Abrir imagem</a>
+        <pre id="data"></pre>
+    </div>
+
+
+</body>
+
+<script>
+    const $size = document.getElementById('size');
+    const $zoom = document.getElementById('zoom');
+    const $uid = document.getElementById('uid');
+    const $sku = document.getElementById('sku');
+    const $purl = document.getElementById('purl');
+    const $ptype = document.getElementById('ptype');
+    const $imageurl = document.getElementById('imageurl');
+    const $noBg = document.getElementById('noBg');
+
+    let win;
+    let zoomStep = 0;
+    let w=95,h=190;
+
+    $size.value = size_encode({w,h});
+    $uid.value  = 'fulano';
+    $zoom.value = 0;
+
+    window.onmessage = (e) => {
+        let action = e.data.action
+        let data = e.data.data
+        console.log('Parent: message received:', action, data)
+
+        switch (action) {
+            case 'ready':
+                postMsg('ready', { env: 'dev', mode: 0})
+                break;
+            case 'open':
+            case 'zoom':
+                $zoom.value = data.scale //* 100.0;
+                zoomStep = data.scale * .1
+                break;
+            case 'saved':
+                // document.getElementById('setSize').value = data.product.sku;
+                // postMsg('show', {url: data.images.source.url })
+                // $sku.value = data.images.source.url.split('/').reverse()[0].split('.')[0];
+                $sku.value = data.product.sku;
+                $purl.value = data.product.url;
+                $imageurl.value = data.images.source.url;
+                break;
+            case 'shown':
+                console.log('final image loaded')
+                break;
+            case 'info':
+                break;
+            case 'loading':
+            case 'uploading':
+                break;
+            case 'error':
+                console.error(action, data)
+                break;
+            default:
+                throw new Error('Invalid message: ' + action);
+        }
+
+        document.getElementById("data").innerText = JSON.stringify((e?.data)??null, null, 2)
+        if (data?.url)
+            document.getElementById("url").href = data.url
+    }
+
+
+    function postMsg(action, data) {
+        if (!win)
+            win = document.getElementById('imageFrame').contentWindow
+
+        const msg = {
+            action: action,
+            data: data
+        }
+
+        console.log('Parent: posting message', action, data)
+        switch (action) {
+            case 'ready':
+            // case 'open':
+            case 'size':
+            case 'uid':
+            case 'zoom':
+            case 'info':
+            case 'save':
+            case 'show':
+            case 'reset':
+                win.postMessage(msg, "*")
+                break;
+            default:
+                throw new Error('Invalid message: ' + action);
+        }
+    }
+
+    window.addEventListener('load', (e) => {
+        console.log('Parent window load', e)
+        // alert('index.html done')
+        // window.setTimeout(()=>postMsg("size", {w,h}), 200);
+    })
+
+    $size.onchange = (e) => {
+        const s = size_decode($size.value)
+        w = s.w
+        h = s.h
+    }
+
+    document.getElementById('setSize').addEventListener('click',  (e) => postMsg("size", {w,h}))
+    document.getElementById('setUid').addEventListener('click',   (e) => postMsg("uid", {uid: $uid.value}))
+    
+    document.getElementById('zoomOut').addEventListener('click',  (e) => postMsg("zoom", {value: $zoom.value = parseFloat($zoom.value) - zoomStep}))
+    document.getElementById('zoomIn').addEventListener('click',   (e) => postMsg("zoom", {value: $zoom.value = parseFloat($zoom.value) + zoomStep}))
+
+    document.getElementById('saveImg').addEventListener('click',  (e) => postMsg("save", {maxWidth: 1080, maxHeight: 540, productType: $ptype.value}))
+    document.getElementById('showImg').addEventListener('click',  (e) => postMsg('show', {url: $imageurl.value }))
+    document.getElementById('setInfo').addEventListener('click',  (e) => postMsg("info", {sku: $sku.value, purl: $purl.value, noBg: $noBg.checked}))
+    document.getElementById('btnReset').addEventListener('click', (e) => postMsg("reset", null))
+</script>
+
+</html>
