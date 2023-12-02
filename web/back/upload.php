@@ -52,7 +52,7 @@ try {
 
 	//$res4 = \dataset\build_image('Z', $env, $res3[1]['path'], $sku, $target_ext);
 
-	$result['code'] = max([$res1[0], $res2[0], $res3[0], $res4[0]]);
+	$result['code'] = max([$res1[0], $res2[0], $res3[0]]);
 	$result['type'] = $check["mime"];
 	$result['images'] = array(
 		'source'     => $res1[1],

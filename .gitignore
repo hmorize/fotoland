@@ -1,0 +1,13 @@
+#javascript maps
+**/*.map
+**/package-lock.json
+**/yarn-lock.json
+**/yarn.lock
+**/*.log
+# diretorios
+vendor
+#Visual Studio Code
+.vscode/
+#Jetbrains Webstorm
+**/*.xml
+.idea/

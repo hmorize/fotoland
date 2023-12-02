@@ -31,7 +31,7 @@ function tira_backgroud($image)
             ['name'     => 'image_file', 'contents' => $handle],
             ['name'     => 'size', 'contents' => 'preview'] // preview auto
         ],
-        'headers' => ['X-Api-Key' => 'fd79bfd985609499ced5dc8b383c402667aad6a5']
+        'headers' => ['X-Api-Key' => '15fdebbdd967800135e432107622de397d674fdb']
     ]);
 
     if ($res->getStatusCode() !== 200) {
